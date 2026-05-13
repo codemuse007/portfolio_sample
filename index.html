@@ -810,7 +810,7 @@ footer span { color: var(--green); }
         </div>
         <div style="padding:6px 12px 10px;border-top:1px solid var(--border);display:flex;align-items:center;">
           <span class="term-prompt">visitor@manas:~$</span>
-          <input type="text" id="term-input" autofocus spellcheck="false" autocomplete="off">
+          <input type="text" id="term-input" spellcheck="false" autocomplete="off">
         </div>
       </div>
       <div id="cat-panel" class="reveal">
@@ -916,6 +916,7 @@ footer span { color: var(--green); }
           setTimeout(() => {
             bootScreen.classList.add('hidden');
             mainShell.classList.add('visible');
+            window.scrollTo(0, 0);
           }, 500);
         }
       }, 20);
