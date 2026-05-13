@@ -1,69 +1,1496 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manas — founder & developer</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manas :: Terminal OS v1.0</title>
+<style>
+/* ==========================================================================
+   ROOT & RESET
+   ========================================================================== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #050505;
+  --green: #00ff88;
+  --green-dim: rgba(0,255,136,0.3);
+  --green-glow: rgba(0,255,136,0.15);
+  --cyan: #00e5ff;
+  --amber: #ffb300;
+  --red: #ff3355;
+  --purple: #b388ff;
+  --text: #c8d6c0;
+  --text-dim: #2a3a2a;
+  --border: rgba(0,255,136,0.15);
+  --font: 'Courier New', 'Consolas', 'Monaco', monospace;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+::selection { background: var(--green); color: var(--bg); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--green-dim); border-radius: 3px; }
+a { color: var(--green); text-decoration: none; transition: all 0.3s; }
+a:hover { color: #fff; text-shadow: 0 0 12px var(--green); }
+img { max-width: 100%; }
+
+/* ==========================================================================
+   CRT OVERLAY
+   ========================================================================== */
+#crt-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 3px);
+  animation: crt-flicker 8s infinite;
+}
+#crt-overlay::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);
+}
+@keyframes crt-flicker {
+  0%, 100% { opacity: 1; }
+  3% { opacity: 0.85; }
+  6% { opacity: 1; }
+  42% { opacity: 0.92; }
+  44% { opacity: 1; }
+  78% { opacity: 0.88; }
+  80% { opacity: 1; }
+}
+
+/* ==========================================================================
+   BOOT SCREEN
+   ========================================================================== */
+#boot-screen {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 2rem;
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+#boot-screen.hidden {
+  opacity: 0; transform: scale(1.02);
+  pointer-events: none;
+}
+.boot-container {
+  max-width: 700px; width: 100%;
+}
+.boot-line {
+  opacity: 0; margin-bottom: 2px;
+  font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+  color: var(--text-dim);
+  transition: color 0.3s;
+  min-height: 1.2em;
+}
+.boot-line.active { color: var(--green); }
+.boot-line.done { color: var(--text-dim); }
+.boot-bar-wrap {
+  width: 100%; height: 2px;
+  background: rgba(0,255,136,0.1);
+  margin: 8px 0; border-radius: 2px;
+  overflow: hidden; opacity: 0;
+}
+.boot-bar-wrap.active { opacity: 1; }
+.boot-bar {
+  height: 100%; width: 0%;
+  background: var(--green);
+  box-shadow: 0 0 20px var(--green-glow);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.boot-cursor {
+  display: inline-block;
+  width: 10px; height: 1.1em;
+  background: var(--green);
+  margin-left: 4px;
+  animation: blink 0.8s step-end infinite;
+  vertical-align: text-bottom;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.boot-status {
+  margin-top: 1.5rem;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--green); font-size: 0.8rem;
+  opacity: 0;
+}
+.boot-status.visible { opacity: 1; }
+.boot-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse-dot 1.2s infinite; }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+/* ==========================================================================
+   MAIN SHELL
+   ========================================================================== */
+#main-shell {
+  opacity: 0; transition: opacity 1.2s ease;
+}
+#main-shell.visible { opacity: 1; }
+
+/* ==========================================================================
+   NAV
+   ========================================================================== */
+nav {
+  position: fixed; top: 0; width: 100%; z-index: 1000;
+  padding: 0 1.5rem;
+  background: rgba(5,5,5,0.85);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border-bottom: 1px solid var(--border);
+  height: 48px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-left { display: flex; align-items: center; gap: 12px; }
+.nav-logo { color: var(--green); font-weight: 700; letter-spacing: 2px; font-size: 0.85rem; }
+.nav-path { color: var(--text-dim); font-size: 0.75rem; }
+.nav-right { display: flex; align-items: center; gap: 1.2rem; }
+.nav-right a {
+  color: var(--text-dim); font-size: 0.75rem; letter-spacing: 0.5px;
+  transition: color 0.3s; text-transform: uppercase;
+}
+.nav-right a:hover { color: var(--green); }
+.nav-indicator { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse-dot 1.5s infinite; }
+
+/* ==========================================================================
+   HERO
+   ========================================================================== */
+#hero {
+  min-height: 100vh; display: flex; align-items: center;
+  padding: 6rem 2rem 2rem; position: relative; overflow: hidden;
+}
+#matrix-canvas, #particle-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+#matrix-canvas { opacity: 0.15; }
+#particle-canvas { opacity: 0.6; z-index: 1; }
+.hero-inner { position: relative; z-index: 2; width: 100%; max-width: 1100px; margin: 0 auto; }
+.hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+.hero-left { }
+.hero-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  font-size: 0.7rem; color: var(--green);
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  animation: glow-pulse 3s infinite;
+}
+@keyframes glow-pulse { 0%,100% { box-shadow: 0 0 8px transparent; } 50% { box-shadow: 0 0 20px var(--green-glow); } }
+.hero-name {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 700; color: #fff;
+  letter-spacing: -2px; line-height: 1;
+  margin-bottom: 0.75rem;
+}
+.hero-name span { color: var(--green); }
+.hero-role-wrap {
+  height: 2rem; margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-role-prompt { color: var(--text-dim); font-size: 0.85rem; }
+.hero-role {
+  color: var(--cyan); font-size: 0.95rem;
+  border-right: 3px solid var(--cyan);
+  padding-right: 4px;
+  animation: blink-cursor 0.8s step-end infinite;
+  white-space: nowrap;
+}
+@keyframes blink-cursor { 50% { border-color: transparent; } }
+.hero-desc {
+  color: var(--text); font-size: 0.9rem; max-width: 450px;
+  margin-bottom: 2rem; opacity: 0.8; line-height: 1.7;
+}
+.hero-cta {
+  display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 24px;
+  font-family: var(--font); font-size: 0.8rem;
+  border: 1px solid var(--green);
+  background: transparent; color: var(--green);
+  cursor: pointer; transition: all 0.3s;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.btn:hover { background: var(--green); color: var(--bg); box-shadow: 0 0 30px var(--green-glow); }
+.btn-amber { border-color: var(--amber); color: var(--amber); }
+.btn-amber:hover { background: var(--amber); color: var(--bg); box-shadow: 0 0 30px rgba(255,179,0,0.2); }
+.btn-ghost { border-color: transparent; color: var(--text-dim); }
+.btn-ghost:hover { border-color: var(--text-dim); color: var(--text); background: transparent; box-shadow: none; }
+
+.hero-right {
+  display: flex; flex-direction: column; gap: 1.2rem;
+}
+.sys-panel {
+  background: rgba(0,255,136,0.03);
+  border: 1px solid var(--border);
+  padding: 1rem 1.2rem;
+}
+.sys-panel-title {
+  font-size: 0.65rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 2px;
+  margin-bottom: 0.75rem;
+}
+.sys-stat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.78rem; }
+.sys-stat:last-child { margin-bottom: 0; }
+.sys-stat-label { color: var(--text-dim); }
+.sys-stat-value { color: var(--green); }
+.sys-stat-bar-wrap { width: 100px; height: 4px; background: rgba(0,255,136,0.1); border-radius: 2px; overflow: hidden; }
+.sys-stat-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 2s; }
+.sys-clock { font-size: 2rem; color: var(--green); font-weight: 700; letter-spacing: 3px; }
+.sys-date { font-size: 0.75rem; color: var(--text-dim); }
+
+/* ==========================================================================
+   SECTIONS COMMON
+   ========================================================================== */
+.section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; position: relative; }
+.section-header { margin-bottom: 3rem; }
+.section-tag {
+  font-size: 0.65rem; color: var(--green);
+  text-transform: uppercase; letter-spacing: 3px;
+  margin-bottom: 0.5rem; display: block;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  color: #fff; font-weight: 700;
+  letter-spacing: -1px;
+}
+.section-title span { color: var(--green); }
+
+/* ==========================================================================
+   ABOUT
+   ========================================================================== */
+.about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.about-card {
+  background: rgba(0,255,136,0.02);
+  border: 1px solid var(--border);
+  padding: 1.5rem; border-radius: 4px;
+  transition: all 0.3s;
+}
+.about-card:hover { border-color: var(--green-dim); transform: translateY(-2px); }
+.about-card-title {
+  font-size: 0.8rem; color: var(--green);
+  margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;
+}
+.about-card-title::before { content: '>'; }
+.about-card p { font-size: 0.85rem; color: var(--text); opacity: 0.85; line-height: 1.7; }
+.about-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1rem; }
+.about-tag {
+  padding: 3px 10px; font-size: 0.7rem;
+  border: 1px solid var(--border); color: var(--text-dim);
+  transition: all 0.3s; border-radius: 2px;
+}
+.about-tag:hover { border-color: var(--green); color: var(--green); }
+.code-block {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 1rem; margin-top: 1rem;
+  font-size: 0.78rem; overflow-x: auto;
+}
+.code-block .cmt { color: var(--text-dim); }
+.code-block .key { color: var(--cyan); }
+.code-block .val { color: var(--amber); }
+.code-block .str { color: var(--green); }
+
+/* ==========================================================================
+   SKILLS
+   ========================================================================== */
+.skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
+.skill-cat { }
+.skill-cat-title { font-size: 0.8rem; color: var(--green); margin-bottom: 1rem; }
+.skill-item { margin-bottom: 0.75rem; }
+.skill-item-header { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; }
+.skill-item-name { color: var(--text); }
+.skill-item-pct { color: var(--text-dim); }
+.skill-bar-wrap { height: 4px; background: rgba(0,255,136,0.08); border-radius: 2px; overflow: hidden; }
+.skill-bar {
+  height: 100%; background: var(--green); border-radius: 2px;
+  width: 0; transition: width 1.2s ease;
+  box-shadow: 0 0 10px var(--green-glow);
+}
+
+/* ==========================================================================
+   PROJECTS
+   ========================================================================== */
+.projects-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.project-card {
+  background: rgba(0,255,136,0.02);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 1.5rem; position: relative;
+  transition: all 0.4s; overflow: hidden;
+}
+.project-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--green);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.4s;
+}
+.project-card:hover { border-color: var(--green-dim); transform: translateY(-3px); }
+.project-card:hover::before { transform: scaleX(1); }
+.project-card-tag {
+  font-size: 0.6rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 0.75rem;
+}
+.project-card h3 { font-size: 1.1rem; color: #fff; margin-bottom: 0.5rem; }
+.project-card p { font-size: 0.82rem; color: var(--text); opacity: 0.7; line-height: 1.6; margin-bottom: 1rem; }
+.project-tech { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 1rem; }
+.project-tech span {
+  padding: 2px 8px; font-size: 0.65rem;
+  border: 1px solid var(--border); border-radius: 2px;
+  color: var(--text-dim);
+}
+.project-links { display: flex; gap: 1rem; }
+.project-links a { font-size: 0.75rem; color: var(--text-dim); }
+.project-links a:hover { color: var(--green); }
+
+/* ==========================================================================
+   EXPERIENCE TIMELINE
+   ========================================================================== */
+.timeline { position: relative; padding-left: 2rem; }
+.timeline::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 1px; background: var(--border);
+}
+.timeline-item { position: relative; margin-bottom: 2rem; padding-left: 1.5rem; }
+.timeline-item::before {
+  content: ''; position: absolute; left: -2rem; top: 4px;
+  width: 10px; height: 10px;
+  background: var(--bg); border: 2px solid var(--green);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+.timeline-item:hover::before { background: var(--green); box-shadow: 0 0 20px var(--green-glow); }
+.timeline-date { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 4px; }
+.timeline-title { font-size: 0.95rem; color: #fff; margin-bottom: 4px; }
+.timeline-sub { font-size: 0.8rem; color: var(--green); margin-bottom: 6px; }
+.timeline-desc { font-size: 0.8rem; color: var(--text); opacity: 0.7; line-height: 1.6; }
+
+/* ==========================================================================
+   TERMINAL + CAT PANEL
+   ========================================================================== */
+#terminal-section { background: rgba(0,0,0,0.3); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 5rem 2rem; margin-top: 2rem; }
+.terminal-layout { display: grid; grid-template-columns: 1fr 280px; gap: 2rem; max-width: 1100px; margin: 0 auto; }
+#terminal {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 0.82rem;
+}
+.terminal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px;
+  background: rgba(0,255,136,0.05);
+  border-bottom: 1px solid var(--border);
+}
+.terminal-title { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.terminal-dots { display: flex; gap: 5px; }
+.terminal-dot { width: 8px; height: 8px; border-radius: 50%; }
+.terminal-dot.r { background: #ff5f56; }
+.terminal-dot.y { background: #ffbd2e; }
+.terminal-dot.g { background: #27c93f; }
+.terminal-body {
+  padding: 12px; height: 360px; overflow-y: auto;
+  display: flex; flex-direction: column;
+  scroll-behavior: smooth;
+}
+.term-line { margin-bottom: 2px; word-break: break-word; }
+.term-line.output { color: var(--text); opacity: 0.85; }
+.term-line.error { color: var(--red); }
+.term-line.success { color: var(--green); }
+.term-line.info { color: var(--cyan); }
+.term-line.system { color: var(--text-dim); font-style: italic; }
+.term-line .prompt { color: var(--green); }
+.term-line .cmd { color: #fff; }
+.term-input-line { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.term-prompt { color: var(--green); font-size: 0.8rem; white-space: nowrap; }
+#term-input {
+  background: transparent; border: none; outline: none;
+  color: #fff; font-family: var(--font); font-size: 0.82rem;
+  flex: 1; caret-color: var(--green);
+}
+.term-cursor {
+  display: inline-block; width: 8px; height: 1.1em;
+  background: var(--green); animation: blink 0.8s step-end infinite;
+  margin-left: 2px; vertical-align: text-bottom;
+}
+
+/* ASCII Cat Panel */
+#cat-panel {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 1rem; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.cat-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.cat-panel-title { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.cat-status {
+  font-size: 0.6rem; padding: 2px 8px;
+  border: 1px solid var(--green); color: var(--green);
+  animation: glow-pulse 2s infinite;
+}
+.cat-art {
+  font-size: 0.55rem; line-height: 1.2;
+  color: var(--green); text-align: center;
+  white-space: pre; flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  text-shadow: 0 0 8px var(--green-glow);
+  margin: 0.5rem 0;
+}
+.cat-stats { margin-top: auto; }
+.cat-stat { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 4px; }
+.cat-stat-label { color: var(--text-dim); }
+.cat-stat-value { color: var(--green); }
+.cat-bar-wrap { height: 3px; background: rgba(0,255,136,0.1); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
+.cat-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 2s; }
+.cat-uptime { font-size: 0.6rem; color: var(--text-dim); text-align: center; margin-top: 6px; }
+
+/* ==========================================================================
+   CONTACT
+   ========================================================================== */
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+.contact-info p { font-size: 0.85rem; color: var(--text); opacity: 0.8; margin-bottom: 1.5rem; line-height: 1.7; }
+.contact-links { display: flex; flex-direction: column; gap: 0.75rem; }
+.contact-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px;
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 0.8rem; color: var(--text);
+  transition: all 0.3s;
+}
+.contact-link:hover { border-color: var(--green); color: var(--green); transform: translateX(4px); }
+.contact-link-icon { color: var(--text-dim); font-size: 1rem; width: 20px; text-align: center; }
+.contact-form { }
+.contact-form input, .contact-form textarea {
+  width: 100%; padding: 10px 14px; margin-bottom: 1rem;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: var(--font); font-size: 0.82rem;
+  outline: none; transition: border-color 0.3s;
+}
+.contact-form input:focus, .contact-form textarea:focus { border-color: var(--green); }
+.contact-form textarea { min-height: 100px; resize: vertical; }
+.contact-form button { width: 100%; }
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+footer {
+  padding: 2rem; text-align: center;
+  border-top: 1px solid var(--border);
+  font-size: 0.7rem; color: var(--text-dim);
+}
+footer span { color: var(--green); }
+
+/* ==========================================================================
+   GLITCH TEXT
+   ========================================================================== */
+.glitch-text { position: relative; display: inline-block; }
+.glitch-text::before, .glitch-text::after {
+  content: attr(data-text);
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  opacity: 0.7;
+}
+.glitch-text::before {
+  color: var(--cyan);
+  z-index: -1;
+  animation: glitch-1 3s infinite;
+}
+.glitch-text::after {
+  color: var(--red);
+  z-index: -2;
+  animation: glitch-2 2.8s infinite;
+}
+@keyframes glitch-1 {
+  0%, 85%, 100% { transform: translate(0); }
+  86% { transform: translate(-2px, 1px); }
+  88% { transform: translate(1px, -1px); }
+  90% { transform: translate(-1px, 2px); }
+}
+@keyframes glitch-2 {
+  0%, 85%, 100% { transform: translate(0); }
+  86% { transform: translate(2px, -1px); }
+  88% { transform: translate(-1px, 1px); }
+  90% { transform: translate(1px, -2px); }
+}
+
+/* ==========================================================================
+   MATRIX RAIN TOGGLE
+   ========================================================================== */
+.matrix-hidden #matrix-canvas { display: none; }
+
+/* ==========================================================================
+   SCROLL ANIMATIONS
+   ========================================================================== */
+.reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .terminal-layout { grid-template-columns: 1fr; }
+  .about-grid { grid-template-columns: 1fr; }
+  .projects-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: 1fr; }
+  .hero-right { max-width: 400px; }
+}
+@media (max-width: 600px) {
+  .nav-right a:not(.nav-indicator) { display: none; }
+  .section { padding: 3rem 1.2rem; }
+  #hero { padding: 5rem 1.2rem 2rem; }
+  #terminal-section { padding: 3rem 1.2rem; }
+  .terminal-body { height: 260px; }
+  .sys-clock { font-size: 1.5rem; }
+  .skills-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 
+<!-- CRT Overlay -->
+<div id="crt-overlay"></div>
+
+<!-- Boot Screen -->
+<div id="boot-screen">
+  <div class="boot-container">
+    <div id="boot-output"></div>
+    <div class="boot-bar-wrap" id="boot-bar-wrap">
+      <div class="boot-bar" id="boot-bar"></div>
+    </div>
+    <div class="boot-status" id="boot-status">
+      <span class="boot-dot"></span>
+      <span id="boot-status-text">INITIALIZING SYSTEM...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main Shell -->
+<div id="main-shell">
+
+  <!-- Nav -->
   <nav>
-    <div class="nav-inner">
-      <span class="logo">/m</span>
-      <div class="nav-links">
-        <a href="#work">work</a>
-        <a href="#about">about</a>
-        <a href="#contact">contact</a>
-      </div>
+    <div class="nav-left">
+      <span class="nav-logo">[MANAS]</span>
+      <span class="nav-path">~/portfolio</span>
+    </div>
+    <div class="nav-right">
+      <a href="#about">about</a>
+      <a href="#skills">skills</a>
+      <a href="#projects">projects</a>
+      <a href="#terminal-section">terminal</a>
+      <a href="#contact">contact</a>
+      <span class="nav-indicator"></span>
     </div>
   </nav>
 
+  <!-- Hero -->
   <section id="hero">
-    <div class="hero-content">
-      <h1 class="glitch" data-text="Manas">Manas</h1>
-      <p class="subtitle">law student · builder · founder of <a href="https://claren.app" target="_blank">claren.app</a></p>
-      <p class="tagline">i build things that make hard stuff feel easy.</p>
+    <canvas id="matrix-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+    <div class="hero-inner">
+      <div class="hero-grid">
+        <div class="hero-left">
+          <div class="hero-tag">System Online v1.0</div>
+          <h1 class="hero-name"><span class="glitch-text" data-text="Manas">Manas</span></h1>
+          <div class="hero-role-wrap">
+            <span class="hero-role-prompt">$ role --current</span>
+            <span class="hero-role" id="hero-role"></span>
+          </div>
+          <p class="hero-desc">
+            law student · builder · founder of <a href="https://claren.app" target="_blank">claren.app</a>
+            &amp; owner of <a href="https://pixelcraze.online" target="_blank">pixelcraze.online</a>.
+            i build tools that make hard things feel effortless.
+          </p>
+          <div class="hero-cta">
+            <a href="#projects" class="btn">view projects</a>
+            <a href="#contact" class="btn btn-amber">contact</a>
+            <a href="https://github.com" target="_blank" class="btn btn-ghost">github</a>
+            <a href="https://linkedin.com" target="_blank" class="btn btn-ghost">linkedin</a>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="sys-panel">
+            <div class="sys-panel-title">system status</div>
+            <div class="sys-stat">
+              <span class="sys-stat-label">status</span>
+              <span class="sys-stat-value">operational</span>
+            </div>
+            <div class="sys-stat">
+              <span class="sys-stat-label">uptime</span>
+              <span class="sys-stat-value" id="sys-uptime">00:00:00</span>
+            </div>
+            <div class="sys-stat">
+              <span class="sys-stat-label">cpu</span>
+              <span class="sys-stat-value" id="sys-cpu">0%</span>
+            </div>
+            <div class="sys-stat">
+              <span class="sys-stat-label">memory</span>
+              <span class="sys-stat-value" id="sys-mem">0%</span>
+            </div>
+            <div class="sys-stat">
+              <span class="sys-stat-label">network</span>
+              <span class="sys-stat-value" id="sys-net">idle</span>
+            </div>
+          </div>
+          <div class="sys-panel">
+            <div class="sys-panel-title">local time</div>
+            <div class="sys-clock" id="sys-clock">00:00:00</div>
+            <div class="sys-date" id="sys-date">---</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="scroll-hint">↓</div>
   </section>
 
-  <section id="work">
-    <h2>/projects</h2>
-    <div class="project-grid">
-      <a href="https://claren.app" target="_blank" class="project-card">
-        <div class="card-icon">⚖️</div>
+  <!-- About -->
+  <section id="about" class="section">
+    <div class="section-header reveal">
+      <span class="section-tag">// about_me</span>
+      <h2 class="section-title">developer <span>profile</span></h2>
+    </div>
+    <div class="about-grid">
+      <div class="about-card reveal">
+        <div class="about-card-title">dossier</div>
+        <p>A law student who fell in love with code. I build at the intersection of law and technology — creating tools that make legal research suck less (Claren) and exploring creative side projects (PixelCraze).</p>
+        <p style="margin-top:0.75rem">My philosophy: write code that matters, keep it clean, and always ship.</p>
+        <div class="about-tags">
+          <span class="about-tag">#law</span>
+          <span class="about-tag">#code</span>
+          <span class="about-tag">#ai</span>
+          <span class="about-tag">#opensource</span>
+          <span class="about-tag">#terminal</span>
+        </div>
+      </div>
+      <div class="about-card reveal">
+        <div class="about-card-title">config.json</div>
+        <div class="code-block">
+          <span class="cmt">// developer configuration</span><br>
+          {<br>
+          &nbsp;&nbsp;"<span class="key">name</span>": "<span class="str">Manas</span>",<br>
+          &nbsp;&nbsp;"<span class="key">title</span>": "<span class="str">Law Student / Developer</span>",<br>
+          &nbsp;&nbsp;"<span class="key">status</span>": "<span class="str">building</span>",<br>
+          &nbsp;&nbsp;"<span class="key">stack</span>": ["<span class="str">JS</span>", "<span class="str">Python</span>", "<span class="str">AI</span>"],<br>
+          &nbsp;&nbsp;"<span class="key">vibe</span>": "<span class="str">chill but productive</span>"<br>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <section id="skills" class="section">
+    <div class="section-header reveal">
+      <span class="section-tag">// capabilities</span>
+      <h2 class="section-title">tech <span>arsenal</span></h2>
+    </div>
+    <div class="skills-grid">
+      <div class="skill-cat reveal">
+        <div class="skill-cat-title">[ languages ]</div>
+        <div class="skill-item" data-pct="85"><div class="skill-item-header"><span class="skill-item-name">JavaScript</span><span class="skill-item-pct">85%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+        <div class="skill-item" data-pct="70"><div class="skill-item-header"><span class="skill-item-name">Python</span><span class="skill-item-pct">70%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+        <div class="skill-item" data-pct="75"><div class="skill-item-header"><span class="skill-item-name">HTML/CSS</span><span class="skill-item-pct">75%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+      </div>
+      <div class="skill-cat reveal">
+        <div class="skill-cat-title">[ tools & frameworks ]</div>
+        <div class="skill-item" data-pct="65"><div class="skill-item-header"><span class="skill-item-name">React</span><span class="skill-item-pct">65%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+        <div class="skill-item" data-pct="60"><div class="skill-item-header"><span class="skill-item-name">Node.js</span><span class="skill-item-pct">60%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+        <div class="skill-item" data-pct="70"><div class="skill-item-header"><span class="skill-name">Git</span><span class="skill-item-pct">70%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+      </div>
+      <div class="skill-cat reveal">
+        <div class="skill-cat-title">[ domains ]</div>
+        <div class="skill-item" data-pct="80"><div class="skill-item-header"><span class="skill-item-name">Web Dev</span><span class="skill-item-pct">80%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+        <div class="skill-item" data-pct="60"><div class="skill-item-header"><span class="skill-item-name">AI/ML</span><span class="skill-item-pct">60%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+        <div class="skill-item" data-pct="55"><div class="skill-item-header"><span class="skill-item-name">DevOps</span><span class="skill-item-pct">55%</span></div><div class="skill-bar-wrap"><div class="skill-bar"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Projects -->
+  <section id="projects" class="section">
+    <div class="section-header reveal">
+      <span class="section-tag">// case_files</span>
+      <h2 class="section-title">classified <span>projects</span></h2>
+    </div>
+    <div class="projects-grid">
+      <div class="project-card reveal">
+        <div class="project-card-tag">case file #001 · active</div>
         <h3>Claren</h3>
-        <p>AI moot court assistant & case summarizer. Built by a law student, for law students.</p>
-        <span class="card-link">claren.app →</span>
-      </a>
-      <a href="https://pixelcraze.online" target="_blank" class="project-card">
-        <div class="card-icon">🎮</div>
+        <p>AI-powered moot court assistant. Generates arguments, summarizes cases, and cuts research time by 90%. Built for law students, by a law student.</p>
+        <div class="project-tech">
+          <span>Python</span><span>AI</span><span>LegalTech</span><span>Gemini</span>
+        </div>
+        <div class="project-links">
+          <a href="https://claren.app" target="_blank">live site →</a>
+          <a href="#">source ↯</a>
+        </div>
+      </div>
+      <div class="project-card reveal">
+        <div class="project-card-tag">case file #002 · active</div>
         <h3>PixelCraze</h3>
-        <p>Where pixels meet passion. A little corner of the internet for creative experiments.</p>
-        <span class="card-link">pixelcraze.online →</span>
-      </a>
+        <p>A creative playground where pixels meet passion. Exploring the lighter, more experimental side of building for the web.</p>
+        <div class="project-tech">
+          <span>JS</span><span>CSS</span><span>CreativeDev</span>
+        </div>
+        <div class="project-links">
+          <a href="https://pixelcraze.online" target="_blank">live site →</a>
+          <a href="#">source ↯</a>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section id="about">
-    <h2>/about</h2>
-    <div class="about-content">
-      <p>Law student by day, builder by night. I make tools that cut through the noise — whether it's decoding legal jargon or experimenting with creative side projects.</p>
-      <p>Claren is my attempt to make moot court suck less. PixelCraze is where i explore the lighter side of building.</p>
+  <!-- Experience -->
+  <section id="experience" class="section">
+    <div class="section-header reveal">
+      <span class="section-tag">// timeline</span>
+      <h2 class="section-title">the <span>journey</span></h2>
+    </div>
+    <div class="timeline">
+      <div class="timeline-item reveal">
+        <div class="timeline-date">2025 · present</div>
+        <div class="timeline-title">Founder — Claren</div>
+        <div class="timeline-sub">claren.app</div>
+        <div class="timeline-desc">Built an AI moot court assistant from scratch. Currently working on integrating Indian Kanoon API for real-time case retrieval.</div>
+      </div>
+      <div class="timeline-item reveal">
+        <div class="timeline-date">2025 · present</div>
+        <div class="timeline-title">Owner — PixelCraze</div>
+        <div class="timeline-sub">pixelcraze.online</div>
+        <div class="timeline-desc">Creative side project exploring experimental web design and interactive experiences.</div>
+      </div>
+      <div class="timeline-item reveal">
+        <div class="timeline-date">2024 · present</div>
+        <div class="timeline-title">Law Student</div>
+        <div class="timeline-sub">(currently enrolled)</div>
+        <div class="timeline-desc">Studying law while building tech that bridges the gap between legal systems and modern software.</div>
+      </div>
+      <div class="timeline-item reveal">
+        <div class="timeline-date">2023 · present</div>
+        <div class="timeline-title">Self-Taught Developer</div>
+        <div class="timeline-sub">open source & side projects</div>
+        <div class="timeline-desc">Started coding, fell in love with building tools. Explored web dev, AI, and creative coding.</div>
+      </div>
     </div>
   </section>
 
-  <section id="contact">
-    <h2>/connect</h2>
-    <div class="contact-links">
-      <a href="#">github</a>
-      <a href="#">instagram</a>
-      <a href="#">linkedin</a>
+  <!-- Terminal -->
+  <section id="terminal-section">
+    <div class="section-header reveal" style="max-width:1100px;margin:0 auto 2rem;">
+      <span class="section-tag">// console</span>
+      <h2 class="section-title">interactive <span>terminal</span></h2>
     </div>
-    <p class="footnote">built solo, with ☕ and late nights.</p>
+    <div class="terminal-layout">
+      <div id="terminal" class="reveal">
+        <div class="terminal-header">
+          <span class="terminal-title">portfolio@manas:~/console</span>
+          <div class="terminal-dots">
+            <span class="terminal-dot r"></span>
+            <span class="terminal-dot y"></span>
+            <span class="terminal-dot g"></span>
+          </div>
+        </div>
+        <div class="terminal-body" id="term-body">
+          <div class="term-line system">[system]: terminal ready. type 'help' for commands.</div>
+        </div>
+        <div style="padding:6px 12px 10px;border-top:1px solid var(--border);display:flex;align-items:center;">
+          <span class="term-prompt">visitor@manas:~$</span>
+          <input type="text" id="term-input" autofocus spellcheck="false" autocomplete="off">
+        </div>
+      </div>
+      <div id="cat-panel" class="reveal">
+        <div class="cat-panel-header">
+          <span class="cat-panel-title">catOS v2.1</span>
+          <span class="cat-status" id="cat-status">ONLINE</span>
+        </div>
+        <div class="cat-art" id="cat-art"></div>
+        <div class="cat-stats">
+          <div class="cat-stat"><span class="cat-stat-label">cat.cpu</span><span class="cat-stat-value" id="cat-cpu">0%</span></div>
+          <div class="cat-bar-wrap"><div class="cat-bar" id="cat-cpu-bar" style="width:0%"></div></div>
+          <div class="cat-stat"><span class="cat-stat-label">cat.ram</span><span class="cat-stat-value" id="cat-ram">0%</span></div>
+          <div class="cat-bar-wrap"><div class="cat-bar" id="cat-ram-bar" style="width:0%"></div></div>
+          <div class="cat-stat"><span class="cat-stat-label">cat.net</span><span class="cat-stat-value" id="cat-net">IDLE</span></div>
+          <div class="cat-uptime" id="cat-uptime">cat uptime: 0s</div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <script src="script.js"></script>
+  <!-- Contact -->
+  <section id="contact" class="section">
+    <div class="section-header reveal">
+      <span class="section-tag">// connect</span>
+      <h2 class="section-title">drop a <span>message</span></h2>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-info reveal">
+        <p>Got a project, collab idea, or just want to say hi? The terminal's always open. Hit me up through any channel below or drop a message in the form.</p>
+        <div class="contact-links">
+          <a href="#" class="contact-link"><span class="contact-link-icon">></span> github.com/manas</a>
+          <a href="#" class="contact-link"><span class="contact-link-icon">></span> linkedin.com/in/manas</a>
+          <a href="#" class="contact-link"><span class="contact-link-icon">></span> instagram.com/manas</a>
+          <a href="mailto:hello@claren.app" class="contact-link"><span class="contact-link-icon">></span> hello@claren.app</a>
+        </div>
+      </div>
+      <form class="contact-form reveal" id="contact-form">
+        <input type="text" placeholder="$ enter your name" required>
+        <input type="email" placeholder="$ enter your email" required>
+        <textarea placeholder="$ type your message..."></textarea>
+        <button type="submit" class="btn">send transmission →</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>[<span>manas</span>] ~ built with ☕ & late nights · <span id="footer-year"></span></p>
+  </footer>
+
+</div>
+
+<script>
+/* ==========================================================================
+   BOOT SEQUENCE
+   ========================================================================== */
+(function boot() {
+  const bootScreen = document.getElementById('boot-screen');
+  const bootOutput = document.getElementById('boot-output');
+  const bootBarWrap = document.getElementById('boot-bar-wrap');
+  const bootBar = document.getElementById('boot-bar');
+  const bootStatus = document.getElementById('boot-status');
+  const bootStatusText = document.getElementById('boot-status-text');
+  const mainShell = document.getElementById('main-shell');
+
+  const lines = [
+    { text: 'BIOS v2.4.1 — initializing hardware...', delay: 200 },
+    { text: 'CPU: QUANTUM_CORE @ 3.2GHz — OK', delay: 300 },
+    { text: 'MEM: 16GB NEURAL_RAM — CHECK', delay: 250 },
+    { text: 'initializing neural shell...', delay: 400 },
+    { text: 'connecting to github servers... [OK]', delay: 500 },
+    { text: 'loading portfolio assets...', delay: 400 },
+    { text: 'decrypting project archives...', delay: 600 },
+    { text: 'loading cat intelligence module...', delay: 500 },
+    { text: 'mounting developer workspace...', delay: 400 },
+    { text: 'catOS initialized v2.1', delay: 300 },
+    { text: 'establishing secure channel... [OK]', delay: 500 },
+    { text: 'authentication successful.', delay: 300 },
+    { text: 'welcome, operator.', delay: 600 },
+  ];
+
+  let i = 0;
+  function addLine(text) {
+    const el = document.createElement('div');
+    el.className = 'boot-line';
+    el.textContent = text;
+    bootOutput.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('active'));
+    setTimeout(() => el.classList.add('done'), 400);
+  }
+
+  function next() {
+    if (i >= lines.length) {
+      bootBarWrap.classList.remove('active');
+      bootStatus.classList.add('visible');
+      bootStatusText.textContent = 'SYSTEM READY. LAUNCHING INTERFACE...';
+      let pct = 0;
+      const barInterval = setInterval(() => {
+        pct += 2;
+        bootBar.style.width = pct + '%';
+        if (pct >= 100) {
+          clearInterval(barInterval);
+          setTimeout(() => {
+            bootScreen.classList.add('hidden');
+            mainShell.classList.add('visible');
+          }, 500);
+        }
+      }, 20);
+      return;
+    }
+    const l = lines[i];
+    addLine(l.text);
+    if (i === 4) { bootBarWrap.classList.add('active'); }
+    i++;
+    setTimeout(next, l.delay);
+  }
+  next();
+})();
+
+/* ==========================================================================
+   MATRIX RAIN
+   ========================================================================== */
+(function matrixRain() {
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, cols, drops;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cols = Math.floor(w / 14);
+    drops = Array(cols).fill(1);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF<>/{}[]|&^%$#@!';
+
+  function draw() {
+    ctx.fillStyle = 'rgba(5,5,5,0.05)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '13px monospace';
+    for (let i = 0; i < drops.length; i++) {
+      const text = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillStyle = i % 3 === 0 ? '#00ff88' : 'rgba(0,255,136,0.4)';
+      ctx.fillText(text, i * 14, drops[i] * 14);
+      if (drops[i] * 14 > h && Math.random() > 0.98) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  setInterval(draw, 55);
+})();
+
+/* ==========================================================================
+   PARTICLES
+   ========================================================================== */
+(function particles() {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  const particles = [];
+  const count = 80;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      r: Math.random() * 2 + 0.5,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,255,136,0.4)';
+      ctx.fill();
+    }
+    // draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(0,255,136,${0.15 * (1 - dist / 120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ==========================================================================
+   ROLE TYPER
+   ========================================================================== */
+(function roleTyper() {
+  const el = document.getElementById('hero-role');
+  const roles = [
+    'Full Stack Developer',
+    'Law Student',
+    'Open Source Enthusiast',
+    'UI Engineer',
+    'Creative Coder',
+    'Terminal Architect',
+    'LegalTech Builder',
+  ];
+  let ri = 0, ci = 0, dir = 1;
+  function tick() {
+    const role = roles[ri];
+    if (dir === 1) {
+      ci++;
+      el.textContent = role.slice(0, ci);
+      if (ci >= role.length) { dir = -1; setTimeout(tick, 2000); return; }
+    } else {
+      ci--;
+      el.textContent = role.slice(0, ci);
+      if (ci <= 0) { dir = 1; ri = (ri + 1) % roles.length; }
+    }
+    setTimeout(tick, dir === 1 ? 80 : 30);
+  }
+  tick();
+})();
+
+/* ==========================================================================
+   SYSTEM CLOCK & STATS
+   ========================================================================== */
+(function sysStats() {
+  const clock = document.getElementById('sys-clock');
+  const dateEl = document.getElementById('sys-date');
+  const uptimeEl = document.getElementById('sys-uptime');
+  const cpuEl = document.getElementById('sys-cpu');
+  const memEl = document.getElementById('sys-mem');
+  const netEl = document.getElementById('sys-net');
+  const startTime = Date.now();
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function update() {
+    const now = new Date();
+    clock.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    dateEl.textContent = now.toDateString();
+
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    const s = elapsed % 60;
+    uptimeEl.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+
+    const cpu = Math.floor(Math.random() * 30) + 10;
+    const mem = Math.floor(Math.random() * 40) + 20;
+    cpuEl.textContent = cpu + '%';
+    memEl.textContent = mem + '%';
+    netEl.textContent = Math.random() > 0.7 ? 'active' : 'idle';
+
+    // CPU & MEM bars for hero progress display
+    document.querySelectorAll('.sys-stat-bar')[0] && (document.querySelectorAll('.sys-stat-bar')[0].style.width = cpu + '%');
+    document.querySelectorAll('.sys-stat-bar')[1] && (document.querySelectorAll('.sys-stat-bar')[1].style.width = mem + '%');
+  }
+  update();
+  setInterval(update, 1000);
+})();
+
+/* ==========================================================================
+   SKILL BARS ANIMATION
+   ========================================================================== */
+(function animateSkills() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const bar = entry.target.querySelector('.skill-bar');
+        if (bar) {
+          const pct = entry.target.dataset.pct;
+          bar.style.width = pct + '%';
+        }
+      }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('.skill-item').forEach(el => observer.observe(el));
+})();
+
+/* ==========================================================================
+   SCROLL REVEAL
+   ========================================================================== */
+(function scrollReveal() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+})();
+
+/* ==========================================================================
+   ASCII CAT PANEL
+   ========================================================================== */
+(function catPanel() {
+  const artEl = document.getElementById('cat-art');
+  const statusEl = document.getElementById('cat-status');
+  const cpuEl = document.getElementById('cat-cpu');
+  const ramEl = document.getElementById('cat-ram');
+  const netEl = document.getElementById('cat-net');
+  const cpuBar = document.getElementById('cat-cpu-bar');
+  const ramBar = document.getElementById('cat-ram-bar');
+  const uptimeEl = document.getElementById('cat-uptime');
+  const catStart = Date.now();
+
+  const cats = [
+`  /\\_/\\
+ ( o.o )
+  > ^ <
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ (=^_^=)
+  )   (
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( -.- )
+  z z z
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( >.< )
+  > ^ <
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( @.@ )
+  = = =
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( 0.0 )
+  ~ ~ ~
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( ^.^ )
+  > ^ <
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( -_- )
+  > ^ <
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( *.* )
+  ~ ~ ~
+ /|   |\\
+  || ||`,
+`  /\\_/\\
+ ( T.T )
+  ; ; ;
+ /|   |\\
+  || ||`,
+`   /\\_/\\
+  ( x_x )
+   u u u
+  /|   |\\
+   || ||`,
+];
+
+  const statuses = ['ONLINE', 'PURRING', 'ANALYZING', 'BREACHING', 'COMPILING', 'SLEEP MODE', 'HACKING', 'WATCHING'];
+
+  let catIdx = 0;
+  let statusIdx = 0;
+
+  function update() {
+    artEl.textContent = cats[catIdx];
+    catIdx = (catIdx + 1) % cats.length;
+
+    statusEl.textContent = statuses[statusIdx];
+    statusIdx = (statusIdx + 1) % statuses.length;
+
+    const cpu = Math.floor(Math.random() * 40) + 15;
+    const ram = Math.floor(Math.random() * 50) + 10;
+    cpuEl.textContent = cpu + '%';
+    ramEl.textContent = ram + '%';
+    cpuBar.style.width = cpu + '%';
+    ramBar.style.width = ram + '%';
+    netEl.textContent = ['IDLE', 'ACTIVE', 'SCANNING', 'PURRING'][Math.floor(Math.random() * 4)];
+
+    const sec = Math.floor((Date.now() - catStart) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    uptimeEl.textContent = `cat uptime: ${m}m ${s}s`;
+  }
+
+  update();
+  setInterval(update, 3500);
+})();
+
+/* ==========================================================================
+   INTERACTIVE TERMINAL
+   ========================================================================== */
+(function terminal() {
+  const input = document.getElementById('term-input');
+  const body = document.getElementById('term-body');
+
+  function scrollBottom() {
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function writeLine(text, cls = '') {
+    const div = document.createElement('div');
+    div.className = 'term-line' + (cls ? ' ' + cls : '');
+    div.innerHTML = text;
+    body.appendChild(div);
+    scrollBottom();
+  }
+
+  function processCmd(cmd) {
+    const trimmed = cmd.trim().toLowerCase();
+    const parts = trimmed.split(/\s+/);
+    const main = parts[0];
+
+    writeLine(`<span class="prompt">visitor@manas:~$</span> <span class="cmd">${cmd.trim()}</span>`);
+
+    switch (main) {
+      case 'help':
+        writeLine('╔══════════════════════════════════════╗', 'success');
+        writeLine('║         AVAILABLE COMMANDS           ║', 'success');
+        writeLine('╠══════════════════════════════════════╣', 'success');
+        writeLine('║ about     — about me                 ║', 'output');
+        writeLine('║ skills    — show skills               ║', 'output');
+        writeLine('║ projects  — list projects             ║', 'output');
+        writeLine('║ contact   — contact info              ║', 'output');
+        writeLine('║ socials   — social links              ║', 'output');
+        writeLine('║ whoami    — developer identity        ║', 'output');
+        writeLine('║ neofetch  — system info                ║', 'output');
+        writeLine('║ cat       — random ascii cat           ║', 'output');
+        writeLine('║ matrix    — toggle matrix rain         ║', 'output');
+        writeLine('║ hack      — fake hacking               ║', 'output');
+        writeLine('║ joke      — nerd joke                  ║', 'output');
+        writeLine('║ ls        — list directories           ║', 'output');
+        writeLine('║ pwd       — print path                 ║', 'output');
+        writeLine('║ date      — current date               ║', 'output');
+        writeLine('║ clear     — clear terminal             ║', 'output');
+        writeLine('║ theme     — toggle theme               ║', 'output');
+        writeLine('║ sudo      — try it ;)                  ║', 'output');
+        writeLine('╚══════════════════════════════════════╝', 'success');
+        break;
+
+      case 'about':
+        writeLine('> Manas — Law student & developer', 'info');
+        writeLine('> Founder of claren.app', 'info');
+        writeLine('> Owner of pixelcraze.online', 'info');
+        writeLine('> Philosophy: build tools that make hard things easy.', 'output');
+        writeLine('> Status: currently building and shipping.', 'output');
+        break;
+
+      case 'skills':
+        writeLine('[languages]    JavaScript, Python, HTML/CSS', 'output');
+        writeLine('[frameworks]   React, Node.js', 'output');
+        writeLine('[tools]        Git, Linux, Docker (learning)', 'output');
+        writeLine('[domains]      Web Dev, AI/ML, LegalTech', 'output');
+        break;
+
+      case 'projects':
+        writeLine('╔══════════════════════════════════════╗', 'success');
+        writeLine('║ PROJECT CASE FILES                   ║', 'success');
+        writeLine('╠══════════════════════════════════════╣', 'success');
+        writeLine('║ #001  Claren — claren.app            ║', 'output');
+        writeLine('║       AI moot court assistant        ║', 'output');
+        writeLine('╠══════════════════════════════════════╣', 'output');
+        writeLine('║ #002  PixelCraze — pixelcraze.online ║', 'output');
+        writeLine('║       Creative playground             ║', 'output');
+        writeLine('╚══════════════════════════════════════╝', 'success');
+        break;
+
+      case 'contact':
+        writeLine('> email:  hello@claren.app', 'output');
+        writeLine('> github: github.com/manas', 'output');
+        writeLine('> linkedin: linkedin.com/in/manas', 'output');
+        writeLine('> ig: instagram.com/manas', 'output');
+        writeLine('> type "socials" for clickable links', 'info');
+        break;
+
+      case 'socials':
+        writeLine('> github:    https://github.com/manas', 'output');
+        writeLine('> linkedin:  https://linkedin.com/in/manas', 'output');
+        writeLine('> instagram: https://instagram.com/manas', 'output');
+        writeLine('> web:       https://claren.app', 'output');
+        break;
+
+      case 'whoami':
+        writeLine('> operator: Manas', 'info');
+        writeLine('> title: Law Student / Developer / Builder', 'info');
+        writeLine('> affiliation: claren.app, pixelcraze.online', 'info');
+        writeLine('> shell: catOS v2.1', 'info');
+        writeLine('> access: ████████████████', 'success');
+        break;
+
+      case 'neofetch':
+        writeLine('       ████████████        manas@portfolio', 'output');
+        writeLine('     ██            ██      -------------', 'output');
+        writeLine('    ██   ████████   ██     OS: catOS v2.1', 'output');
+        writeLine('    ██   ████████   ██     Host: Quantum Core', 'output');
+        writeLine('    ██   ████████   ██     Kernel: 6.9.0-neural', 'output');
+        writeLine('     ██            ██      Uptime: ' + document.getElementById('sys-uptime').textContent, 'output');
+        writeLine('       ████████████        Shell: catSH 2.1', 'output');
+        writeLine('                            DE: Terminal', 'output');
+        break;
+
+      case 'cat':
+        const cats = [
+          '/\\_/\\\n( o.o )\n > ^ <',
+          '/\\_/\\\n(=^_^=)\n )   (',
+          '/\\_/\\\n( -.- )\n z z z',
+          '/\\_/\\\n( >.< )\n > ^ <',
+          '/\\_/\\\n( @.@ )\n = = =',
+        ];
+        writeLine(cats[Math.floor(Math.random() * cats.length)], 'success');
+        writeLine('> meow!', 'system');
+        break;
+
+      case 'matrix':
+        document.body.classList.toggle('matrix-hidden');
+        writeLine(document.body.classList.contains('matrix-hidden') ? '> matrix rain deactivated.' : '> matrix rain activated.', 'info');
+        break;
+
+      case 'hack':
+        writeLine('> INITIALIZING HACK SEQUENCE...', 'error');
+        setTimeout(() => writeLine('> breach attempt #1: ████████░░ 72%', 'output'), 300);
+        setTimeout(() => writeLine('> breach attempt #2: ██████████ 100%', 'output'), 700);
+        setTimeout(() => writeLine('> [WARNING] firewall detected — rerouting...', 'error'), 1100);
+        setTimeout(() => writeLine('> connection intercepted by catOS security.', 'info'), 1500);
+        setTimeout(() => writeLine('> nice try, operator. access denied.', 'system'), 1800);
+        setTimeout(() => writeLine('> (the cat is watching you)', 'system'), 2100);
+        break;
+
+      case 'joke':
+        const jokes = [
+          '> Why do programmers prefer dark mode? Because light attracts bugs.',
+          '> How many programmers does it take to change a light bulb? None — that\'s a hardware problem.',
+          '> Why did the developer go broke? Because he used up all his cache.',
+          '> There are 10 types of people in this world: those who understand binary and those who don\'t.',
+          '> Why was the cat a great programmer? It had excellent purr-allel processing skills.',
+          '> I told my cat a joke about pointers. He said it was paw-some.',
+        ];
+        writeLine(jokes[Math.floor(Math.random() * jokes.length)], 'output');
+        break;
+
+      case 'ls':
+        writeLine('about/   skills/   projects/   experience/   terminal/   contact/', 'output');
+        writeLine('README.md  .gitignore  package.json  config.json', 'output');
+        break;
+
+      case 'pwd':
+        writeLine('/home/visitor/portfolio', 'output');
+        break;
+
+      case 'date':
+        writeLine(new Date().toString(), 'output');
+        break;
+
+      case 'clear':
+        body.innerHTML = '';
+        writeLine('[system]: terminal cleared.', 'system');
+        break;
+
+      case 'theme':
+        const root = document.documentElement;
+        const current = getComputedStyle(root).getPropertyValue('--green').trim();
+        if (current === '#00ff88') {
+          root.style.setProperty('--green', '#00e5ff');
+          root.style.setProperty('--green-dim', 'rgba(0,229,255,0.3)');
+          root.style.setProperty('--green-glow', 'rgba(0,229,255,0.15)');
+          writeLine('> theme switched: CYAN', 'info');
+        } else {
+          root.style.setProperty('--green', '#00ff88');
+          root.style.setProperty('--green-dim', 'rgba(0,255,136,0.3)');
+          root.style.setProperty('--green-glow', 'rgba(0,255,136,0.15)');
+          writeLine('> theme switched: GREEN', 'info');
+        }
+        break;
+
+      case 'sudo':
+        const sudoArgs = parts.slice(1).join(' ');
+        if (sudoArgs === 'hire-me') {
+          writeLine('>', 'output');
+          writeLine('> ACCESS GRANTED.', 'success');
+          writeLine('> Hello, recruiter. You\'ve found the easter egg.', 'info');
+          writeLine('> Manas is available for hire.', 'info');
+          writeLine('> Drop a message at hello@claren.app', 'info');
+          writeLine('>', 'output');
+          writeLine('> 🔥🔥🔥', 'success');
+        } else if (sudoArgs) {
+          writeLine(`> ${sudoArgs}: permission denied. (just kidding, the command doesn't exist)`, 'error');
+        } else {
+          writeLine('> usage: sudo <command>', 'output');
+          writeLine('> try: sudo hire-me', 'info');
+        }
+        break;
+
+      case 'music':
+        const genres = ['lofi hip hop', 'synthwave', 'ambient', 'chillhop', 'drum & bass'];
+        const track = Math.floor(Math.random() * 999);
+        writeLine(`> now playing: ${genres[Math.floor(Math.random() * genres.length)]} - track_0${track}.mp3`, 'info');
+        writeLine('> [=====------] 42% volume: ████████░░ 80%', 'output');
+        writeLine('> (just vibes, no actual audio)', 'system');
+        break;
+
+      case 'resume':
+        writeLine('> downloading resume...', 'info');
+        setTimeout(() => writeLine('> (resume not available yet — coming soon)', 'system'), 500);
+        break;
+
+      default:
+        if (cmd.trim() === '') break;
+        writeLine(`command not found: ${main}. type 'help' for available commands.`, 'error');
+    }
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const val = input.value;
+      processCmd(val);
+      input.value = '';
+    }
+  });
+
+  // Focus input when clicking terminal
+  document.getElementById('terminal').addEventListener('click', () => input.focus());
+
+  // Konami code easter egg
+  let konami = [];
+  document.addEventListener('keydown', (e) => {
+    konami.push(e.key);
+    konami = konami.slice(-10);
+    if (konami.join(',') === 'ArrowUp,ArrowUp,ArrowDown,ArrowDown,ArrowLeft,ArrowRight,ArrowLeft,ArrowRight,b,a') {
+      writeLine('> 🎮 KONAMI CODE ACTIVATED!', 'success');
+      writeLine('> secret dev mode unlocked. you are a legend.', 'info');
+      konami = [];
+    }
+  });
+})();
+
+/* ==========================================================================
+   FOOTER YEAR
+   ========================================================================== */
+document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+/* ==========================================================================
+   CONTACT FORM HANDLER
+   ========================================================================== */
+document.getElementById('contact-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  btn.textContent = '✓ sent!';
+  btn.style.borderColor = 'var(--green)';
+  btn.style.color = 'var(--green)';
+  setTimeout(() => { btn.textContent = 'send transmission →'; btn.style = ''; }, 2000);
+});
+</script>
 </body>
 </html>
