@@ -1,0 +1,284 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, monospace;
+  background: #0f0f0f;
+  color: #e0e0e0;
+  line-height: 1.6;
+}
+
+/* nav */
+nav {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  padding: 1.5rem 2rem;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(15, 15, 15, 0.6);
+}
+
+.nav-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #7c5cbf;
+  letter-spacing: -0.02em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-links a {
+  color: #888;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+  text-transform: lowercase;
+}
+
+.nav-links a:hover {
+  color: #b088ff;
+}
+
+/* hero */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  text-align: center;
+  padding: 2rem;
+}
+
+.hero-content h1 {
+  font-size: clamp(4rem, 12vw, 8rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #fff;
+  position: relative;
+  display: inline-block;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.5;
+}
+
+.glitch::before {
+  color: #7c5cbf;
+  z-index: -1;
+  animation: glitch-left 3s infinite;
+}
+
+.glitch::after {
+  color: #ff6b6b;
+  z-index: -2;
+  animation: glitch-right 2.8s infinite;
+}
+
+@keyframes glitch-left {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(-3px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, 2px); }
+}
+
+@keyframes glitch-right {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(3px, -1px); }
+  94% { transform: translate(-2px, 1px); }
+  96% { transform: translate(1px, -2px); }
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #888;
+  margin-top: 0.5rem;
+}
+
+.subtitle a {
+  color: #b088ff;
+  text-decoration: none;
+  border-bottom: 1px dotted #b088ff;
+}
+
+.subtitle a:hover {
+  color: #d4bfff;
+}
+
+.tagline {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  color: #666;
+  font-style: italic;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  font-size: 1.5rem;
+  color: #444;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+/* sections */
+section {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 6rem 2rem;
+}
+
+h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #7c5cbf;
+  margin-bottom: 3rem;
+  letter-spacing: -0.02em;
+}
+
+/* work */
+.project-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.project-card {
+  background: #171717;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 2rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.project-card:hover {
+  border-color: #7c5cbf;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(124, 92, 191, 0.1);
+}
+
+.card-icon {
+  font-size: 2rem;
+}
+
+.project-card h3 {
+  font-size: 1.3rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.project-card p {
+  font-size: 0.9rem;
+  color: #888;
+  line-height: 1.5;
+}
+
+.card-link {
+  margin-top: auto;
+  font-size: 0.85rem;
+  color: #7c5cbf;
+  font-weight: 500;
+}
+
+/* about */
+.about-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.about-content p {
+  font-size: 1.05rem;
+  color: #aaa;
+  max-width: 600px;
+  line-height: 1.7;
+}
+
+/* contact */
+.contact-links {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.contact-links a {
+  color: #888;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: color 0.2s;
+  position: relative;
+}
+
+.contact-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #7c5cbf;
+  transition: width 0.2s;
+}
+
+.contact-links a:hover {
+  color: #b088ff;
+}
+
+.contact-links a:hover::after {
+  width: 100%;
+}
+
+.footnote {
+  color: #444;
+  font-size: 0.85rem;
+}
+
+/* responsive */
+@media (max-width: 600px) {
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-links {
+    gap: 1rem;
+  }
+
+  section {
+    padding: 4rem 1.5rem;
+  }
+}
